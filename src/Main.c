@@ -3,55 +3,86 @@
 #include <string.h>
 #include <unistd.h>
 
+#define SCREEN_WIDTH 	(80 * 2)
+#define SCREEN_HEIGHT 	(22 * 2)
+
 int main() {
-    float A = 0, B = 0;
-    float i, j;
-    int k;
-    float z[1760];
-    char b[1760];
+    float angleX = 0;
+    float angleZ = 0;
 
-    printf("\x1b[2J"); // Bildschirm leeren
+    const float R = 2.0;
+    const float r = 1.0;
+    const float cameraDistance = 4.0;
+    const float scale = 30.0;
 
-    for (;;) {
-        memset(b, 32, 1760);
-        memset(z, 0, 7040);
+    const float aspectRatio = 0.5;
 
-        for (j = 0; j < 6.28; j += 0.07) {
-            for (i = 0; i < 6.28; i += 0.02) {
-                float c = sin(i);
-                float d = cos(j);
-                float e = sin(A);
-                float f = sin(j);
-                float g = cos(A);
-                float h = d + 2;
-                float D = 1 / (c * h * e + f * g + 5);
-                float l = cos(i);
-                float m = cos(B);
-                float n = sin(B);
-                float t = c * h * g - f * e;
+    float zbuffer[SCREEN_WIDTH * SCREEN_HEIGHT];
+    char screen[SCREEN_WIDTH * SCREEN_HEIGHT];
 
-                int x = 40 + 30 * D * (l * h * m - t * n);
-                int y = 12 + 15 * D * (l * h * n + t * m);
-                int o = x + 80 * y;
-                int N = 8 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n);
+    while (1) {
+        memset(screen, ' ', sizeof(screen));
+        memset(zbuffer, 0, sizeof(zbuffer));
 
-                if (y < 22 && y >= 0 && x >= 0 && x < 80 && D > z[o]) {
-                    z[o] = D;
-                    b[o] = ".,-~:;=!*#$@"[N > 0 ? N : 0];
+        for (float theta = 0; theta < 2 * M_PI; theta += 0.07) {
+            for (float phi = 0; phi < 2 * M_PI; phi += 0.02) {
+                float circleX = R + r * cos(theta);
+                float circleZ = r * sin(theta);
+
+                float x = circleX * cos(phi);
+                float y = circleX * sin(phi);
+                float z = circleZ;
+
+                float nx = cos(theta) * cos(phi);
+                float ny = cos(theta) * sin(phi);
+                float nz = sin(theta);
+
+                float y1 = y * cos(angleX) - z * sin(angleX);
+                float z1 = y * sin(angleX) + z * cos(angleX);
+
+                float ny1 = ny * cos(angleX) - nz * sin(angleX);
+                float nz1 = ny * sin(angleX) + nz * cos(angleX);
+
+                float x2 = x * cos(angleZ) - y1 * sin(angleZ);
+                float y2 = x * sin(angleZ) + y1 * cos(angleZ);
+
+                float nx2 = nx * cos(angleZ) - ny1 * sin(angleZ);
+                float ny2 = nx * sin(angleZ) + ny1 * cos(angleZ);
+
+                float ooz = 1 / (z1 + cameraDistance);
+
+                int xp = SCREEN_WIDTH / 2 + scale * ooz * x2;
+                int yp = SCREEN_HEIGHT / 2 - scale * ooz * y2 * aspectRatio;
+
+                int idx = xp + SCREEN_WIDTH * yp;
+
+                float light = nx2 * 0 + ny2 * 1 + nz1 * -1;
+
+                if (xp >= 0 && xp < SCREEN_WIDTH &&
+                    yp >= 0 && yp < SCREEN_HEIGHT &&
+                    ooz > zbuffer[idx]) {
+
+                    zbuffer[idx] = ooz;
+
+                    const char *shades = ".,-~:;=!*#$@";
+                    int shadeIndex = (int)((light + 1) * 5.5);
+
+                    if (shadeIndex < 0) shadeIndex = 0;
+                    if (shadeIndex > 11) shadeIndex = 11;
+
+                    screen[idx] = shades[shadeIndex];
                 }
             }
         }
 
         printf("\x1b[H");
-        for (k = 0; k < 1760; k++) {
-            putchar(k % 80 ? b[k] : '\n');
+        for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+            putchar(i % SCREEN_WIDTH ? screen[i] : '\n');
         }
 
-        A += 0.04;
-        B += 0.02;
+        angleX += 0.04;
+        angleZ += 0.02;
 
         usleep(30000);
     }
-
-    return 0;
 }

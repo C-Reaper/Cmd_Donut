@@ -3,8 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#define SCREEN_WIDTH 	(80 * 2)
-#define SCREEN_HEIGHT 	(22 * 2)
+#define SCREEN_WIDTH 	(80)
+#define SCREEN_HEIGHT 	(22)
 
 int main() {
     float angleX = 0;
